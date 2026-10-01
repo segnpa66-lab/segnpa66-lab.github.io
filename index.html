@@ -300,15 +300,18 @@
       go("/scripts/" + id); toast(tr("Скрипт сохранён"));
     } catch (error) { toast(error.message); save.disabled = false; }
   }
-  async function publishScript() {
+  async function publishScript(control) {
     const script = state.detail;
-    if (!script || !state.user || !canPublish(script) || !confirm(tr("Опубликовать текущую версию скрипта?"))) return;
+    if (!script || !state.user || !canPublish(script) || control.disabled) return;
+    control.disabled = true;
+    control.textContent = tr("Публикую…");
     try {
       await js("/api/scripts/" + script.uuid + "/publish", { method: "POST" });
       editedSincePublish.delete(script.uuid); publishedWithoutFurtherEdit.add(script.uuid);
       state.ownLoaded = false; await loadOwn(true);
       state.detail = { ...script, ...await js("/api/scripts/" + script.uuid) }; detail(); toast(tr("Скрипт опубликован"));
     } catch (error) { toast(error.message); }
+    finally { control.disabled = false; control.textContent = tr("Опубликовать версию"); }
   }
   function help() {
     const question = (title, answer) => `<div class="panel"><p class="eyebrow">${e(tr(title))}</p><p>${e(tr(answer))}</p></div>`;
@@ -598,7 +601,7 @@
       if (action === "retry-own") { await loadOwn(); return; }
       if (action === "new") { go("/new"); return; }
       if (action === "edit") { go("/edit/" + state.detail.uuid); return; }
-      if (action === "publish") { await publishScript(); return; }
+      if (action === "publish") { await publishScript(control); return; }
       if (action === "favorite") {
         if (!state.user) { go("/account"); toast(tr("Сначала войдите в Null’s")); return; }
         const id = state.detail.uuid, remove = state.favorites.has(id);
