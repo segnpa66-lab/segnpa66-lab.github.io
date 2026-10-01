@@ -302,7 +302,7 @@
     } catch (error) { if (!state.catalog) main.innerHTML = `<div class="empty">${e(error.message)}<br><br>${button("Обновить", "refresh")}</div>`; else toast(error.message); }
   }
   async function directCatalog() {
-    const source = await fetch("https://raw.githubusercontent.com/segnpa66-lab/nb-scripts-authors/main/list.txt", { cache: "no-store" });
+    const source = await fetch("https://raw.githubusercontent.com/segnpa66-lab/nb-scripts-authors/android-script-library/list.txt", { cache: "no-store" });
     if (!source.ok) throw Error("author list");
     const names = [...new Set([...((await source.text()).matchAll(/@([A-Za-z0-9_.-]{1,64})/g))].map(match => match[1].toLowerCase()))];
     if (!names.length) throw Error("author list");
