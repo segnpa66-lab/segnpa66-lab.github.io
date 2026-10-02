@@ -37,6 +37,8 @@ body.code-open{overflow:hidden}body.code-open .app{visibility:hidden}
 .code-header strong{min-width:0;overflow-wrap:anywhere}.code-full{flex:1;min-height:0;width:100%;max-height:none;margin:0;border:0;border-radius:0;padding:20px 16px max(24px,env(safe-area-inset-bottom));overscroll-behavior:contain;touch-action:pan-x pan-y pinch-zoom}
 .release-summary{display:flex;flex-wrap:wrap;align-items:center;gap:10px;margin-top:20px}.version-badge{display:inline-block;padding:6px 10px;background:var(--soft);color:var(--accent);border-radius:10px;font-size:12px;font-weight:700}.release-summary time,.release-card time{color:var(--muted);font-size:13px}.release-card header{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:12px}.release-card h2{margin:0;font-size:19px}.release-card p{white-space:pre-wrap;overflow-wrap:anywhere;line-height:1.5}.release-list{max-width:880px}
 @media(prefers-reduced-motion:reduce){*{scroll-behavior:auto!important;transition:none!important}}
+
+.button.is-active{background:var(--soft);border-color:var(--accent);color:var(--accent)}
 </style>
 </head>
 <body>
@@ -228,7 +230,7 @@ body.code-open{overflow:hidden}body.code-open .app{visibility:hidden}
   const actionIcons = { battle:"play", code:"code", "download-code":"download", "share-script":"share", "share-author":"share", favorite:"heart", "block-script":"block", "block-author":"block", edit:"edit", publish:"upload", index:"code", shuffle:"shuffle", "script-releases":"history", "close-code":"close" };
   const compactActions = new Set(["download-code", "share-script", "share-author", "favorite", "block-script", "block-author", "close-code"]);
   const icon = name => `<svg class="action-icon" aria-hidden="true"><use href="#i-${name}"/></svg>`;
-  const button = (text, action, cls = "") => { const compact = compactActions.has(action), title = tr(text); return `<button type="button" class="button ${cls} ${compact ? "compact-action" : ""}" data-action="${action}" title="${e(title)}" aria-label="${e(title)}">${actionIcons[action] ? icon(actionIcons[action]) : ""}<span${compact ? ' class="sr-only"' : ""}>${e(title)}</span></button>`; };
+  const button = (text, action, cls = "") => { const compact = compactActions.has(action), title = tr(text); return `<button type="button" class="button ${cls} ${compact ? "compact-action" : ""}" data-action="${action}" ${["favorite", "block-script", "block-author"].includes(action) ? `aria-pressed="${cls.includes("is-active")}"` : ""} title="${e(title)}" aria-label="${e(title)}">${actionIcons[action] ? icon(actionIcons[action]) : ""}<span${compact ? ' class="sr-only"' : ""}>${e(title)}</span></button>`; };
   const link = (path, text, cls = "") => `<a href="${e(routeHref(path))}" data-route="${e(path)}" class="${cls}">${e(text)}</a>`;
   function toast(message) { const node = document.getElementById("toast"); node.textContent = message; node.classList.add("show"); clearTimeout(toast.timer); toast.timer = setTimeout(() => node.classList.remove("show"), 3200); }
   function heading(title, description = "", count = "") { return `<div class="page-head"><div><p class="eyebrow">Script Library</p><h1>${e(title)}</h1>${description ? `<p class="sub">${e(description)}</p>` : ""}</div>${count ? `<span class="count">${e(count)}</span>` : ""}</div>`; }
@@ -292,7 +294,7 @@ body.code-open{overflow:hidden}body.code-open .app{visibility:hidden}
     const scripts = blocks.authors.has(author.uuid) ? [] : (state.authorScripts || state.catalog?.scripts.filter(item => item.author_uuid === author.uuid) || []).filter(item => !blocks.scripts.has(item.uuid));
     const d2 = author.username?.toLowerCase() === "d2rkmean";
     main.innerHTML = `<button class="back" data-action="back">← ${e(tr("Авторы"))}</button>` +
-      `<div class="panel"><p class="eyebrow">${e(tr("Профиль автора"))}</p><h1 class="detail-title">${e(author.name)}</h1><p class="author-handle">@${e(author.username)}</p><div class="actions">${button("Поделиться автором", "share-author")}${button(blocks.authors.has(author.uuid) ? "Разблокировать автора" : "Заблокировать автора", "block-author")}</div>${d2 ? `<div class="profile-option">${button(blocks.hideD2Random ? "Показывать в «Случайно»" : "Скрыть в «Случайно»", "toggle-d2-random", "small")}<span>${e(tr("Только для случайной сортировки"))}</span></div>` : ""}<p class="detail-id">UUID ${e(author.uuid)}</p></div>` +
+      `<div class="panel"><p class="eyebrow">${e(tr("Профиль автора"))}</p><h1 class="detail-title">${e(author.name)}</h1><p class="author-handle">@${e(author.username)}</p><div class="actions">${button("Поделиться автором", "share-author")}${button(blocks.authors.has(author.uuid) ? "Разблокировать автора" : "Заблокировать автора", "block-author", blocks.authors.has(author.uuid) ? "is-active" : "")}</div>${d2 ? `<div class="profile-option">${button(blocks.hideD2Random ? "Показывать в «Случайно»" : "Скрыть в «Случайно»", "toggle-d2-random", "small")}<span>${e(tr("Только для случайной сортировки"))}</span></div>` : ""}<p class="detail-id">UUID ${e(author.uuid)}</p></div>` +
       `<div class="page-head" style="margin-top:28px"><h2>${e(tr("Скрипты"))}</h2><span class="count">${scripts.length}</span></div>${blocks.authors.has(author.uuid) ? `<div class="empty">${e(tr("Автор заблокирован на этом устройстве."))}</div>` : `<div class="grid">${scripts.map(card).join("")}</div>`}`;
   }
   function detail() {
@@ -301,7 +303,7 @@ body.code-open{overflow:hidden}body.code-open .app{visibility:hidden}
     const authorHandle = script.author_username || state.catalog?.authors.find(author => author.uuid === script.author_uuid)?.username;
     const mine = state.user && (script.author_uuid === state.user.uuid || state.own.some(item => item.uuid === script.uuid));
     main.innerHTML = `<button class="back" data-action="back">← ${e(tr("Библиотека"))}</button>` +
-      `<div class="panel"><p class="eyebrow">${e(tr("Скрипт"))}</p><h1 class="detail-title">${e(script.name)}</h1>${authorHandle ? link("/authors/" + encodeURIComponent(authorHandle), "@" + authorHandle, "author-handle") : `<span class="author-handle">${e(script.author_name)}</span>`}<p class="detail-desc">${e(script.description || tr("Описание не добавлено"))}</p><div class="meta">${label("Создан:", date(script.created_at))}${label("Обновлён:", date(script.updated_at))}${label("Опубликован:", date(script.published_at))}</div><div class="actions">${button("Настроить и запустить бой", "battle", "primary")}${button("Посмотреть код", "code")}${button("Скачать .lua", "download-code")}${button("История версий", "script-releases")}${button("Поделиться скриптом", "share-script")}${button(blocks.scripts.has(script.uuid) ? "Разблокировать скрипт" : "Заблокировать скрипт", "block-script")}${button(state.favorites.has(script.uuid) ? "Удалить из избранного" : "В избранное", "favorite")}${mine ? button("Редактировать", "edit") : ""}${mine && canPublish(script) ? button("Опубликовать версию", "publish", "primary") : ""}</div><p class="detail-id">UUID ${e(script.uuid)}</p><div id="release-summary" class="release-summary"></div></div>`;
+      `<div class="panel"><p class="eyebrow">${e(tr("Скрипт"))}</p><h1 class="detail-title">${e(script.name)}</h1>${authorHandle ? link("/authors/" + encodeURIComponent(authorHandle), "@" + authorHandle, "author-handle") : `<span class="author-handle">${e(script.author_name)}</span>`}<p class="detail-desc">${e(script.description || tr("Описание не добавлено"))}</p><div class="meta">${label("Создан:", date(script.created_at))}${label("Обновлён:", date(script.updated_at))}${label("Опубликован:", date(script.published_at))}</div><div class="actions">${button("Настроить и запустить бой", "battle", "primary")}${button("Посмотреть код", "code")}${button("Скачать .lua", "download-code")}${button("История версий", "script-releases")}${button("Поделиться скриптом", "share-script")}${button(blocks.scripts.has(script.uuid) ? "Разблокировать скрипт" : "Заблокировать скрипт", "block-script", blocks.scripts.has(script.uuid) ? "is-active" : "")}${button(state.favorites.has(script.uuid) ? "Удалить из избранного" : "В избранное", "favorite", state.favorites.has(script.uuid) ? "is-active" : "")}${mine ? button("Редактировать", "edit") : ""}${mine && canPublish(script) ? button("Опубликовать версию", "publish", "primary") : ""}</div><p class="detail-id">UUID ${e(script.uuid)}</p><div id="release-summary" class="release-summary"></div></div>`;
     loadReleaseSummary(script.uuid);
   }
   const editedSincePublish = new Set(), publishedWithoutFurtherEdit = new Set();
@@ -525,11 +527,13 @@ body.code-open{overflow:hidden}body.code-open .app{visibility:hidden}
   }
   const releaseCache = new Map();
   async function scriptReleases(id) {
-    if (!releaseCache.has(id)) {
+    const version = state.detail?.uuid === id ? state.detail.updated_at || state.detail.published_at || "" : "";
+    const cached = releaseCache.get(id);
+    if (!cached || cached.version !== version || cached.expires < Date.now()) {
       const data = await js("/api/scripts/" + id + "/releases");
-      releaseCache.set(id, (data.releases || []).sort((a,b) => Date.parse(b.created_at) - Date.parse(a.created_at)));
+      releaseCache.set(id, {version, expires:Date.now()+60000, items:(data.releases || []).sort((a,b) => Date.parse(b.created_at) - Date.parse(a.created_at))});
     }
-    return releaseCache.get(id);
+    return releaseCache.get(id).items;
   }
   async function loadReleaseSummary(id) {
     try {
