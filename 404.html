@@ -1431,12 +1431,13 @@ main>.page-head,main>.panel,main>.grid,main>.toolbar,main>.battle-caption{animat
     set: data => { try { localStorage.setItem("script-library-catalog", JSON.stringify({ expires: Date.now() + 86400000, data })); } catch { /* Cache is optional. */ } }
   };
   const blockStore = {
-    load: () => { try { const value = JSON.parse(localStorage.getItem("script-library-blocks") || "{}"); return { authors: new Set(Array.isArray(value.authors) ? value.authors : []), scripts: new Set(Array.isArray(value.scripts) ? value.scripts : []), hideD2Random: value.hideD2Random === true }; } catch { return { authors: new Set(), scripts: new Set(), hideD2Random: false }; } },
-    save: value => { try { localStorage.setItem("script-library-blocks", JSON.stringify({ authors: [...value.authors], scripts: [...value.scripts], hideD2Random: value.hideD2Random })); return true; } catch { return false; } }
+    load: () => { try { const value = JSON.parse(localStorage.getItem("script-library-blocks") || "{}"); return { authors: new Set(Array.isArray(value.authors) ? value.authors : []), scripts: new Set(Array.isArray(value.scripts) ? value.scripts : []), randomAuthors:new Set(Array.isArray(value.randomAuthors)?value.randomAuthors:[]),hideD2Random: value.hideD2Random === true }; } catch { return { authors: new Set(), scripts: new Set(),randomAuthors:new Set(), hideD2Random: false }; } },
+    save: value => { try { localStorage.setItem("script-library-blocks", JSON.stringify({ authors: [...value.authors], scripts: [...value.scripts],randomAuthors:[...value.randomAuthors], hideD2Random: value.hideD2Random })); return true; } catch { return false; } }
   };
   const blocks = blockStore.load();
   function preferenceSnapshot() {
     const values={theme:localStorage.getItem("theme")||"system",language:localStorage.getItem("language")||"system",stripWrapper:localStorage.getItem("strip-service-wrapper")==="true",hideD2Random:blocks.hideD2Random};
+    for(const id of blocks.randomAuthors)values["randomAuthor:"+id]=true;
     for(const id of blocks.authors)values["author:"+id]=true;
     for(const id of blocks.scripts)values["script:"+id]=true;
     for(let i=0;i<localStorage.length;i++){const key=localStorage.key(i);if(key?.startsWith("battle-settings:")||key?.startsWith("battle-brawlers:")||key?.startsWith("battle-preset:")){try{values[(key.startsWith("battle-settings:")?"battle:":key.startsWith("battle-preset:")?"preset:":"brawlers:")+key.slice(key.indexOf(":")+1)]=JSON.parse(localStorage.getItem(key));}catch{}}}
@@ -1444,12 +1445,12 @@ main>.page-head,main>.panel,main>.grid,main>.toolbar,main>.battle-caption{animat
   }
   function replacePreferences(values) {
     const before=JSON.stringify(preferenceSnapshot());
-    blocks.authors.clear();blocks.scripts.clear();blocks.hideD2Random=values.hideD2Random===true;
+    blocks.authors.clear();blocks.scripts.clear();blocks.randomAuthors.clear();blocks.hideD2Random=values.hideD2Random===true;
     localStorage.setItem("theme",values.theme||localStorage.getItem("theme")||"system");applyTheme();localStorage.setItem("language",values.language||"system");localStorage.setItem("strip-service-wrapper",String(values.stripWrapper===true));
     const remove=[];for(let i=0;i<localStorage.length;i++){const key=localStorage.key(i);if(key?.startsWith("battle-settings:")||key?.startsWith("battle-brawlers:")||key?.startsWith("battle-preset:"))remove.push(key);}remove.forEach(key=>localStorage.removeItem(key));
-    for(const [key,value] of Object.entries(values)){const [kind,id]=key.split(":");if(kind==="author"&&value===true)blocks.authors.add(id);if(kind==="script"&&value===true)blocks.scripts.add(id);if(kind==="preset"&&value&&typeof value==="object"&&!Array.isArray(value))localStorage.setItem("battle-preset:"+id,JSON.stringify(value));if(kind==="battle"&&Array.isArray(value))localStorage.setItem("battle-settings:"+id,JSON.stringify(value));if(kind==="brawlers"&&Array.isArray(value))localStorage.setItem("battle-brawlers:"+id,JSON.stringify(value));}
+    for(const [key,value] of Object.entries(values)){const [kind,id]=key.split(":");if(kind==="randomAuthor"&&value===true)blocks.randomAuthors.add(id);if(kind==="author"&&value===true)blocks.authors.add(id);if(kind==="script"&&value===true)blocks.scripts.add(id);if(kind==="preset"&&value&&typeof value==="object"&&!Array.isArray(value))localStorage.setItem("battle-preset:"+id,JSON.stringify(value));if(kind==="battle"&&Array.isArray(value))localStorage.setItem("battle-settings:"+id,JSON.stringify(value));if(kind==="brawlers"&&Array.isArray(value))localStorage.setItem("battle-brawlers:"+id,JSON.stringify(value));}
     // Direct storage write avoids sending received cloud values back as local edits.
-    localStorage.setItem("script-library-blocks",JSON.stringify({authors:[...blocks.authors],scripts:[...blocks.scripts],hideD2Random:blocks.hideD2Random}));
+    localStorage.setItem("script-library-blocks",JSON.stringify({authors:[...blocks.authors],scripts:[...blocks.scripts],randomAuthors:[...blocks.randomAuthors],hideD2Random:blocks.hideD2Random}));
     if(before!==JSON.stringify(preferenceSnapshot())&&!state.restoring&&!bindingPreferences){if(document.getElementById("battle-form"))refreshPresets();else renderRoute();}
   }
   const preferenceSync = new PreferenceSync(localStorage,{snapshot:preferenceSnapshot,replace:replacePreferences},payload=>js("/api/library/settings",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify(payload)}),()=>{const node=document.getElementById("sync-status");if(node)node.textContent=tr(preferenceSync.status);});
@@ -1505,7 +1506,7 @@ main>.page-head,main>.panel,main>.grid,main>.toolbar,main>.battle-caption{animat
   const date = raw => raw ? new Intl.DateTimeFormat(locale(), { dateStyle: "medium", timeStyle: "short" }).format(new Date(raw)) : tr("Без даты");
   const randomRank = id => { let hash = 2166136261; for (const c of id + state.seed) hash = Math.imul(hash ^ c.charCodeAt(0), 16777619); return hash >>> 0; };
   const label = (text, value) => `<div><span>${e(tr(text))}</span>${e(value)}</div>`;
-  const actionIcons = { battle:"play", code:"code", "download-code":"download", "share-script":"share", "share-author":"share", favorite:"heart",favorites:"heart",mine:"file",new:"plus",logout:"logout","delete-script":"trash","account-settings":"settings","stats":"stats", "clear-recent":"trash", "retry-session":"refresh", "block-script":"block", "block-author":"block", edit:"edit", publish:"upload", index:"code", shuffle:"shuffle", "script-releases":"history", "close-code":"close", "ban-brawlers":"block", "unban-brawlers":"check", "create-preset":"plus", "save-preset":"save", "rename-preset":"edit", "delete-preset":"trash", "save-battle":"save", "reset-battle":"refresh", "import-battle":"upload", "recent":"history", "open-query":"code", "sync-now":"refresh" };
+  const actionIcons = { battle:"play", code:"code", "download-code":"download", "share-script":"share", "share-author":"share", favorite:"heart",favorites:"heart",mine:"file",new:"plus",logout:"logout","delete-script":"trash","account-settings":"settings","stats":"stats", "clear-recent":"trash", "retry-session":"refresh", "block-script":"block", "block-author":"block","toggle-random-author":"shuffle", edit:"edit", publish:"upload", index:"code", shuffle:"shuffle", "script-releases":"history", "close-code":"close", "ban-brawlers":"block", "unban-brawlers":"check", "create-preset":"plus", "save-preset":"save", "rename-preset":"edit", "delete-preset":"trash", "save-battle":"save", "reset-battle":"refresh", "import-battle":"upload", "recent":"history", "open-query":"code", "sync-now":"refresh" };
   const compactActions = new Set(["download-code", "share-script", "share-author", "favorite", "block-script", "block-author", "close-code","delete-script"]);
   const icon = name => `<svg class="action-icon" aria-hidden="true"><use href="#i-${name}"/></svg>`;
   const button = (text, action, cls = "") => { const compact = compactActions.has(action), title = tr(text); return `<button type="button" class="button ${cls} ${compact ? "compact-action" : ""}" data-action="${action}" ${["favorite", "block-script", "block-author"].includes(action) ? `aria-pressed="${cls.includes("is-active")}"` : ""} title="${e(title)}" aria-label="${e(title)}">${actionIcons[action] ? icon(actionIcons[action]) : ""}<span${compact ? ' class="sr-only"' : ""}>${e(title)}</span></button>`; };
@@ -1529,7 +1530,7 @@ main>.page-head,main>.panel,main>.grid,main>.toolbar,main>.battle-caption{animat
     const catalog = state.catalog || { scripts: [] };
     let scripts = catalog.scripts.filter(script => {
       if (blocks.scripts.has(script.uuid) || blocks.authors.has(script.author_uuid)) return false;
-      if (state.sort === "random" && blocks.hideD2Random && (script.author_username?.toLowerCase() === "d2rkmean" || catalog.authors?.some(author => author.uuid === script.author_uuid && author.username?.toLowerCase() === "d2rkmean"))) return false;
+      if (state.sort === "random" && (blocks.randomAuthors.has(script.author_uuid)||blocks.hideD2Random && (script.author_username?.toLowerCase() === "d2rkmean" || catalog.authors?.some(author => author.uuid === script.author_uuid && author.username?.toLowerCase() === "d2rkmean")))) return false;
       if (!query) return true;
       const fields = {
         title: script.name, author: [script.author_name, script.author_username].join(" "),
@@ -1572,9 +1573,9 @@ main>.page-head,main>.panel,main>.grid,main>.toolbar,main>.battle-caption{animat
     const author = state.author;
     if (!author) { main.innerHTML = `<div class="loading">${e(tr("Открываю автора…"))}</div>`; return; }
     const scripts = blocks.authors.has(author.uuid) ? [] : (state.authorScripts || state.catalog?.scripts.filter(item => item.author_uuid === author.uuid) || []).filter(item => !blocks.scripts.has(item.uuid)).sort(newestScript);
-    const d2 = author.username?.toLowerCase() === "d2rkmean";
+    const hideRandom=blocks.randomAuthors.has(author.uuid)||author.username?.toLowerCase()==="d2rkmean"&&blocks.hideD2Random;
     main.innerHTML = `<button class="back" data-action="back">← ${e(tr("Авторы"))}</button>` +
-      `<div class="panel"><p class="eyebrow">${e(tr("Профиль автора"))}</p><h1 class="detail-title">${e(author.name)}</h1><p class="author-handle">@${e(author.username)}</p><div class="actions">${button("Поделиться автором", "share-author")}${button(blocks.authors.has(author.uuid) ? "Разблокировать автора" : "Заблокировать автора", "block-author", blocks.authors.has(author.uuid) ? "is-active" : "")}</div>${d2 ? `<div class="profile-option">${button(blocks.hideD2Random ? "Показывать в «Случайно»" : "Скрыть в «Случайно»", "toggle-d2-random", "small")}<span>${e(tr("Только для случайной сортировки"))}</span></div>` : ""}<p class="detail-id">UUID ${e(author.uuid)}</p></div>` +
+      `<div class="panel"><p class="eyebrow">${e(tr("Профиль автора"))}</p><h1 class="detail-title">${e(author.name)}</h1><p class="author-handle">@${e(author.username)}</p><div class="actions">${button("Поделиться автором", "share-author")}${button(blocks.authors.has(author.uuid) ? "Разблокировать автора" : "Заблокировать автора", "block-author", blocks.authors.has(author.uuid) ? "is-active" : "")}</div><div class="profile-option">${button(hideRandom ? "Показывать в «Случайно»" : "Скрыть в «Случайно»", "toggle-random-author",hideRandom?"small is-active":"small")}<span>${e(tr("Только для случайной сортировки"))}</span></div><p class="detail-id">UUID ${e(author.uuid)}</p></div>` +
       `<div class="page-head" style="margin-top:28px"><h2>${e(tr("Скрипты"))}</h2><span class="count">${scripts.length}</span></div>${blocks.authors.has(author.uuid) ? `<div class="empty">${e(tr("Автор заблокирован."))}</div>` : `<div class="grid">${scripts.map(card).join("")}</div>`}`;
   }
   function detail() {
@@ -2133,7 +2134,7 @@ main>.page-head,main>.panel,main>.grid,main>.toolbar,main>.battle-caption{animat
       if (action === "share-author") { await share("/authors/" + state.author.username); return; }
       if (action === "block-author") { const id = state.author?.uuid; if (!id) return; if (blocks.authors.has(id)) blocks.authors.delete(id); else blocks.authors.add(id); blockStore.save(blocks); queuePreference("author:"+id,blocks.authors.has(id)); authorPage(); return; }
       if (action === "block-script") { const id = state.detail?.uuid; if (!id) return; if (blocks.scripts.has(id)) blocks.scripts.delete(id); else blocks.scripts.add(id); blockStore.save(blocks); queuePreference("script:"+id,blocks.scripts.has(id)); detail(); return; }
-      if (action === "toggle-d2-random") { if (state.author?.username?.toLowerCase() !== "d2rkmean") return; blocks.hideD2Random = !blocks.hideD2Random; blockStore.save(blocks); queuePreference("hideD2Random",blocks.hideD2Random); authorPage(); return; }
+      if(action==="toggle-random-author"){const author=state.author;if(!author?.uuid)return;const legacy=author.username?.toLowerCase()==="d2rkmean"&&blocks.hideD2Random;const hidden=blocks.randomAuthors.has(author.uuid)||legacy;if(hidden)blocks.randomAuthors.delete(author.uuid);else blocks.randomAuthors.add(author.uuid);if(legacy){blocks.hideD2Random=false;queuePreference("hideD2Random",false);}blockStore.save(blocks);queuePreference("randomAuthor:"+author.uuid,blocks.randomAuthors.has(author.uuid));authorPage();return;}
       if (action === "unblock-author" || action === "unblock-script") { const id = control.dataset.id; if (action === "unblock-author") blocks.authors.delete(id); else blocks.scripts.delete(id); blockStore.save(blocks); queuePreference((action==="unblock-author"?"author:":"script:")+id,false); account(); return; }
       if (action === "copy-room") { await navigator.clipboard.writeText(state.roomLink); toast(tr("Ссылка скопирована")); return; }
       if (action === "favorites") { go("/favorites"); return; }
