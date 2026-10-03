@@ -1369,7 +1369,7 @@ main>.page-head,main>.panel,main>.grid,main>.toolbar,main>.battle-caption{animat
       this.owner=id;this.storage.setItem('sync-current-account',id);
       this.pending=id?this.read('sync-outbox:'+id,{}):{};
       if(id){const backup=this.read('sync-backup:'+id,null);this.bootstrap=backup||(!old?current:{});this.adapter.replace(backup||{});}
-      else {this.adapter.replace(this.read('sync-guest',{}));this.status='';}
+      else {const guest={...this.read('sync-guest',{}),theme:current.theme||'system'};this.storage.setItem('sync-guest',JSON.stringify(guest));this.adapter.replace(guest);this.status='';}
       this.notify();if(id)this.pull();
     }
     queue(key,value) {
@@ -1432,7 +1432,7 @@ main>.page-head,main>.panel,main>.grid,main>.toolbar,main>.battle-caption{animat
   function replacePreferences(values) {
     const before=JSON.stringify(preferenceSnapshot());
     blocks.authors.clear();blocks.scripts.clear();blocks.hideD2Random=values.hideD2Random===true;
-    localStorage.setItem("theme",values.theme||"system");applyTheme();localStorage.setItem("language",values.language||"system");localStorage.setItem("strip-service-wrapper",String(values.stripWrapper===true));
+    localStorage.setItem("theme",values.theme||localStorage.getItem("theme")||"system");applyTheme();localStorage.setItem("language",values.language||"system");localStorage.setItem("strip-service-wrapper",String(values.stripWrapper===true));
     const remove=[];for(let i=0;i<localStorage.length;i++){const key=localStorage.key(i);if(key?.startsWith("battle-settings:")||key?.startsWith("battle-brawlers:")||key?.startsWith("battle-preset:"))remove.push(key);}remove.forEach(key=>localStorage.removeItem(key));
     for(const [key,value] of Object.entries(values)){const [kind,id]=key.split(":");if(kind==="author"&&value===true)blocks.authors.add(id);if(kind==="script"&&value===true)blocks.scripts.add(id);if(kind==="preset"&&value&&typeof value==="object"&&!Array.isArray(value))localStorage.setItem("battle-preset:"+id,JSON.stringify(value));if(kind==="battle"&&Array.isArray(value))localStorage.setItem("battle-settings:"+id,JSON.stringify(value));if(kind==="brawlers"&&Array.isArray(value))localStorage.setItem("battle-brawlers:"+id,JSON.stringify(value));}
     // Direct storage write avoids sending received cloud values back as local edits.
@@ -1588,7 +1588,7 @@ main>.page-head,main>.panel,main>.grid,main>.toolbar,main>.battle-caption{animat
     const blockedScripts = [...blocks.scripts].map(id => { const script = state.catalog?.scripts.find(item => item.uuid === id) || state.own.find(item => item.uuid === id); return `<div class="block-row"><span>${link("/scripts/" + id, script?.name || id)}</span><button class="button small" type="button" data-action="unblock-script" data-id="${e(id)}">${e(tr("Разблокировать"))}</button></div>`; });
     const blacklist = `<div class="panel"><h2>${e(tr("Чёрный список"))}</h2><p class="sub">${e(tr(state.user?"Синхронизируется с вашим аккаунтом.":"Сохраняется только на этом устройстве."))}</p>${blockedAuthors.length || blockedScripts.length ? `${blockedAuthors.length ? `<h3>${e(tr("Авторы"))}</h3>${blockedAuthors.join("")}` : ""}${blockedScripts.length ? `<h3>${e(tr("Скрипты"))}</h3>${blockedScripts.join("")}` : ""}` : `<p class="sub">${e(tr("Чёрный список пуст"))}</p>`}</div>`;
     if (state.user) {
-      main.innerHTML = heading(tr("Аккаунт")) + `<div class="panel login"><h2>${e(state.user.name || state.user.username)}</h2><p class="author-handle">@${e(state.user.username)}</p><div class="actions">${button("Мои скрипты", "mine", "primary")}${button("Избранное", "favorites")}${button("Настройки аккаунта","account-settings")}${state.user.uuid==="3709a103-b8ef-4006-b801-d29f7846643c"?button("Статистика","stats"):""}${button("Недавние скрипты", "recent")}${button("Выйти", "logout")}</div></div>` + languageSetting + blacklist;
+      main.innerHTML = heading(tr("Аккаунт")) + `<div class="panel login"><h2>${e(state.user.name || state.user.username)}</h2><p class="author-handle">@${e(state.user.username)}</p><div class="actions">${button("Мои скрипты", "mine", "primary")}${button("Избранное", "favorites")}${button("Настройки аккаунта","account-settings")}${(state.user.uuid==="3709a103-b8ef-4006-b801-d29f7846643c"||state.user.username?.toLowerCase()==="ishak")?button("Статистика","stats"):""}${button("Недавние скрипты", "recent")}${button("Выйти", "logout")}</div></div>` + languageSetting + blacklist;
     } else {
       main.innerHTML = heading(tr("Вход в Null’s")) + (localSession?button("Повторить восстановление","retry-session"):"")+`<form id="login" class="panel login"><label class="field"><span>${e(tr("Имя пользователя"))}</span><input class="input" name="username" autocomplete="username" required></label><label class="field"><span>${e(tr("Пароль"))}</span><input class="input" type="password" name="password" autocomplete="current-password" required></label><label class="remember"><input type="checkbox" name="remember"> ${e(tr("Сохранить вход на этом устройстве"))}</label><button class="button primary" type="submit">${e(tr("Войти"))}</button><p class="sub">${e(tr("Вход нужен для избранного и просмотра кода."))}</p></form>` + languageSetting + blacklist;
     }
